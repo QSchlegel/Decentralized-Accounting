@@ -108,12 +108,12 @@ data ViewParams = ViewParams {
     vpTName :: !TokenName
 } deriving(Generic, ToJSON, FromJSON, ToSchema)
 
-data FundParams = FundParams {
-    fpName :: !Integer,
-    fpPattern :: !Integer,
-    fpCurSymbol :: !CurrencySymbol,
-    fpTName :: !TokenName,
-    fpAmount :: !Integer
+data DepositParams = DepositParams {
+    dpName :: !Integer,
+    dpPattern :: !Integer,
+    dpCurSymbol :: !CurrencySymbol,
+    dpTName :: !TokenName,
+    dpAmount :: !Integer
 } deriving(Generic, ToJSON, FromJSON, ToSchema)
 
 data WithdParams = WithdParams {
@@ -173,11 +173,11 @@ view vp = do
             logInfo @String $ printf "The Account %d holds %d" 
                 (vpName vp) (valueOf (mconcat valueList) (vpCurSymbol vp) (vpTName vp) )
 
-fund :: AsContractError e => FundParams -> Contract w s e ()
-fund fp = do 
+deposit :: AsContractError e => DepositParams -> Contract w s e ()
+deposit dp = do 
     pkh <- ownPaymentPubKeyHash
     let p = AccountParam { owner = pkh}
-    utxos <- Map.filter (isSuitable (fpName fp) (fpPattern fp)) <$> utxosAt (scrAddress p)
+    utxos <- Map.filter (isSuitable (dpName dp) (dpPattern dp)) <$> utxosAt (scrAddress p)
     if Map.null utxos
         then logInfo @String $ "no suitable Account was found at this Adress."
         else do
@@ -191,14 +191,13 @@ fund fp = do
             case getDatum' (head ciList) of
                 Nothing -> logInfo @String $ "no Datum in Source Script"
                 Just d -> do
-                    let tval = (Value.singleton (fpCurSymbol fp) (fpTName fp) (fpAmount fp)) <> 
+                    let tval = (Value.singleton (dpCurSymbol dp) (dpTName dp) (dpAmount dp)) <> 
                                (mconcat valueList)
                         tx = mconcat [Constraints.mustSpendScriptOutput oref unitRedeemer | oref <- orefs] <> 
                                      (Constraints.mustPayToOtherScript (valHash p) d $ tval)
                     ledgerTx <- submitTxConstraintsWith @Account lookups tx
                     void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
-                    logInfo @String $ printf "Account %d of type %d recieved multi-funding."    
-                                (fpName fp) (fpPattern fp)  
+                    logInfo @String $ printf "%d was deposited on Account %d." (dpAmount dp) (dpName dp)
 
 withdraw :: AsContractError e => WithdParams -> Contract w s e ()
 withdraw wp = do
@@ -311,12 +310,12 @@ getDatum' o = case _ciTxOutDatum o of
 
 --Definitions
 endpoints :: Contract () AccountSchema Text ()
-endpoints = awaitPromise (init' `select` close' `select` view' `select` fund' `select` withdraw' `select` transfer' ) >> endpoints
+endpoints = awaitPromise (init' `select` close' `select` view' `select` deposit' `select` withdraw' `select` transfer' ) >> endpoints
     where
         init'     = endpoint @"init" init
         close'    = endpoint @"close" close
-        view'    = endpoint @"view" view
-        fund'     = endpoint @"fund" fund
+        view'     = endpoint @"view" view
+        deposit'  = endpoint @"deposit" fund
         withdraw' = endpoint @"withdraw" withdraw
         transfer' = endpoint @"transfer" transfer
 
