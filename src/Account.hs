@@ -141,7 +141,7 @@ type AccountSchema =
             Endpoint "init"     InitParams
         .\/ Endpoint "close"    CloseParams
         .\/ Endpoint "view"     ViewParams
-        .\/ Endpoint "fund"     FundParams
+        .\/ Endpoint "deposit"  DepositParams
         .\/ Endpoint "withdraw" WithdParams
         .\/ Endpoint "transfer" TransParams
 
@@ -315,7 +315,7 @@ endpoints = awaitPromise (init' `select` close' `select` view' `select` deposit'
         init'     = endpoint @"init" init
         close'    = endpoint @"close" close
         view'     = endpoint @"view" view
-        deposit'  = endpoint @"deposit" fund
+        deposit'  = endpoint @"deposit" deposit
         withdraw' = endpoint @"withdraw" withdraw
         transfer' = endpoint @"transfer" transfer
 

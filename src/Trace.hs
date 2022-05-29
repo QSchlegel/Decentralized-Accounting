@@ -7,7 +7,7 @@
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 
-module Trace2 where
+module Trace where
 
 import Control.Monad.Freer.Extras as Extras
 import Data.Functor               (void)
