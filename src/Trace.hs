@@ -44,6 +44,7 @@ token = AssetClass (currency, tname)
 accountTrace :: EmulatorTrace ()
 accountTrace = do
     h1 <- activateContractWallet (knownWallet 1) endpoints
+    h2 <- activateContractWallet (knownWallet 2) endpoints
     --Bank active credit
     callEndpoint @"init" h1 $ InitParams {
         ipName = 1,
@@ -52,9 +53,9 @@ accountTrace = do
     }
     --liability passive debit
     void $ waitNSlots 2
-    callEndpoint @"init" h1 $ InitParams {
-        ipName = 2,
-        ipPattern = 4,
+    callEndpoint @"init" h2 $ InitParams {
+        ipName = 1,
+        ipPattern = 2,
         ipAmount = 15000000
     }
     
@@ -81,50 +82,29 @@ accountTrace = do
     callEndpoint @"transfer" h1 $ TransParams {
         tpNameSen = 1,
         tpPatternSen = 1,
-        tpNameRec = 2,
-        tpPatternRec = 4,
+        tpRecPkh = (mockWalletPaymentPubKeyHash $ knownWallet 2),
+        tpNameRec = 1,
+        tpPatternRec = 2,
         tpCurSymbol = "aa",
         tpTName = "A",
         tpAmount = 40
     }
     void $ waitNSlots 2
-    callEndpoint @"transfer" h1 $ TransParams {
-        tpNameSen = 2,
-        tpPatternSen = 4,
+    callEndpoint @"transfer" h2 $ TransParams {
+        tpNameSen = 1,
+        tpPatternSen = 2,
+        tpRecPkh = (mockWalletPaymentPubKeyHash $ knownWallet 1),
         tpNameRec = 1,
         tpPatternRec = 1,
-        tpCurSymbol = "",
-        tpTName = "",
-        tpAmount = 10000000
+        tpCurSymbol = "aa",
+        tpTName = "A",
+        tpAmount = 30
     }
 
-    void $ waitNSlots 2
-    callEndpoint @"withdraw" h1 $ WithdParams {
-        wpName = 2,
-        wpPattern = 4,
-        wpCurSymbol = "aa",
-        wpTName = "A",
-        wpAmount = 40
-    }
 
     void $ waitNSlots 2
     callEndpoint @"view" h1 $ ViewParams {
-        vpName = 1,
-        vpPattern = 1,
-        vpCurSymbol = "aa",
-        vpTName = "A"
-    }
-
-    void $ waitNSlots 2
-    callEndpoint @"close" h1 $ CloseParams {
-        cpName = 1,
-        cpPattern = 1
-    }
-
-    void $ waitNSlots 2
-    callEndpoint @"close" h1 $ CloseParams {
-        cpName = 2,
-        cpPattern = 4
+        vpName = 1
     }
    
     s <- waitNSlots 2
