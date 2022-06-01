@@ -104,6 +104,8 @@ policy pkh = mkMintingPolicyScript $
 --              credit  |   1       |   3       |   5       |   7       |
 --              debit   |   2       |   4       |   6       |   8       |
 
+--active  = 1
+--passive = 2
 
 data InitParams = InitParams {
     ipName :: !Integer,
@@ -301,9 +303,11 @@ transfer tp = do
         where
             logger :: TransParams -> String
             logger (TransParams nameSen patSen _ nameRec patRec curSym tName amount)
-                | patSen `modulo` 2 == 0 && patRec `modulo` 2 == 1 = printf "%d  was transfered from active Account %d to passive Account %d" amount nameRec nameSen
-                | patSen `modulo` 2 == 1 && patRec `modulo` 2 == 0 = printf "%d  was transfered from active Account %d to passive Account %d" amount nameSen nameRec
+                | (patSen == 1 && patRec == 1) || (patSen == 2 && patRec == 1) = printf "%d  was transfered from active Account %d to passive Account %d" amount nameRec nameSen
+                | (patSen == 1 && patRec == 2) || (patSen == 2 && patRec == 2) = printf "%d  was transfered from active Account %d to passive Account %d" amount nameSen nameRec
                 | otherwise = "Accounting Error"
+                -- a1 -> a2 = a2 -> a1 | p1 -> a2 = a2 -> p1
+                -- a1 -> p2 = a1 -> p2 | p1 -> p2 = p1 -> p2
 
 close :: AsContractError e => CloseParams -> Contract w s e ()
 close cp = do
@@ -313,10 +317,9 @@ close cp = do
     if Map.null utxos
         then logInfo @String $ "no suitable Account was found at this Adress."
         else do
-            let orefs = fst <$> Map.toList utxos
-                lookups = Constraints.unspentOutputs utxos <>
-                          Constraints.otherScript (validator p)
-                tx :: TxConstraints Void Void
+            let orefs   = fst <$> Map.toList utxos
+                lookups =     Constraints.unspentOutputs utxos <>
+                              Constraints.otherScript (validator p)
                 tx = mconcat [Constraints.mustSpendScriptOutput oref unitRedeemer | oref <- orefs]
 
             ledgerTx <- submitTxConstraintsWith @Void lookups tx
@@ -331,19 +334,21 @@ mint mp = do
     if Map.null utxos
         then logInfo @String $ "No suitable Account was found."
         else do 
-            let list = Map.toList utxos
-                orefs    = fst <$> list
-                ciList       = snd <$> list
+            let list      = Map.toList utxos
+                orefs     = fst <$> list
+                ciList    = snd <$> list
                 valueList = _ciTxOutValue <$> ciList
-                lookups  = Constraints.unspentOutputs utxos <>
-                           Constraints.otherScript (validator p)
+                lookups   = Constraints.mintingPolicy (policy pkh) <>
+                            Constraints.unspentOutputs utxos <>
+                            Constraints.otherScript (validator p)
             case getDatum' (head ciList) of
                 Nothing -> logInfo @String $ "no Datum in Source Script"
                 Just d -> do
                     let val     = Value.singleton (curSymbol' pkh)  (mpToken mp) (mpAmount mp)
-                        lookups = Constraints.mintingPolicy $ policy pkh
-                        tx      = Constraints.mustMintValue val <>
-                                  Constraints.mustPayToOtherScript (valHash p) d ( val <> (mconcat valueList))
+                        tx      =    Constraints.mustMintValue val <>
+                            mconcat [Constraints.mustSpendScriptOutput oref unitRedeemer | oref <- orefs] <> 
+                                     Constraints.mustPayToOtherScript (valHash p) d ( val <> (mconcat valueList))
+
                     ledgerTx <- submitTxConstraintsWith @Void lookups tx
                     void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
                     logInfo @String $ printf "forged %s" (show val)
