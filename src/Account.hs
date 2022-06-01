@@ -87,6 +87,7 @@ valHash = Scripts.validatorHash . typedValidator
 scrAddress :: AccountParam -> Ledger.Address
 scrAddress = scriptAddress . validator
 
+--Minter
 {-# INLINABLE mkPolicy #-}
 mkPolicy :: PaymentPubKeyHash -> () -> ScriptContext -> Bool
 mkPolicy pkh () ctx = txSignedBy (scriptContextTxInfo ctx) $ unPaymentPubKeyHash pkh
@@ -99,11 +100,6 @@ policy pkh = mkMintingPolicyScript $
 
 
 --Endpoint Params
---Pattern       Account |   active  |   passive |   profit  |   loss    |
---Balance sheet ________|___________|___________|___________|___________|___
---              credit  |   1       |   3       |   5       |   7       |
---              debit   |   2       |   4       |   6       |   8       |
-
 --active  = 1
 --passive = 2
 
@@ -166,9 +162,7 @@ type AccountSchema =
         .\/ Endpoint "deposit"  DepositParams
         .\/ Endpoint "withdraw" WithdParams
         .\/ Endpoint "transfer" TransParams
-        .\/ Endpoint "mint"     MintParams
-
-        
+        .\/ Endpoint "mint"     MintParams   
 
 --Contract Endpoints
 init :: AsContractError e => InitParams -> Contract w s e ()
@@ -378,6 +372,7 @@ getDatum' o = case _ciTxOutDatum o of
 
 curSymbol' :: PaymentPubKeyHash -> CurrencySymbol
 curSymbol' = scriptCurrencySymbol . policy
+
 --Definitions
 endpoints :: Contract () AccountSchema Text ()
 endpoints = awaitPromise (init' `select` close' `select` view' `select` deposit' `select` withdraw' `select` transfer' `select` mint' ) >> endpoints
