@@ -1,6 +1,6 @@
 # Decentralized-Accounting
 
-This project was funded by Project Catalyst Fund 3.
+This project was funded by Project Catalyst Fund 3 https://cardano.ideascale.com/c/idea/333447.
 The goal of this project is creating a prototype of an accounting / book keeping system on the Cardano Blockchain.
 
 If you would like to use this code for your project you can do so.
